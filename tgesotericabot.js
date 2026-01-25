@@ -40,14 +40,14 @@ const GPT_MODEL = 'gpt-4o-mini';
 const S = new Map();
 
 // ==== UI Helpers ====
-// Главное меню: вместо «Астрология» — «🃏 Карта дня»
+// Главное меню
 const mainKeyboard = () => Markup.keyboard([
   ['🔮 Тарология', '♈️ Гороскоп'],
   ['🃏 Карта дня', '🗣 Предсказание'],
   ['ℹ️ О нас']
 ]).resize();
 
-// Меню Таро БЕЗ «Кельтского креста» и БЕЗ «Карты дня»
+// Меню Таро (без «Кельтского креста» и «Карты дня»)
 const tarotKeyboard = () => Markup.keyboard([
   ['💰 Расклад на деньги', '🧭 Расклад на судьбу'],
   ['💞 Таро совместимость', '🔯 Таро знак'],
@@ -64,6 +64,43 @@ const PREDICT_BUTTON_TO_PERSONA = {
   '💘 Оракул любви': 'love_oracle',
   '💰 Оракул достатка': 'wealth_oracle',
   '🧭 Оракул предназначения': 'path_oracle'
+};
+
+// ==== PERSONA META (имена и приветствия) ====
+const PERSONA_META = {
+  love_oracle: {
+    name: 'Лиора',
+    title: 'оракул любви',
+    hello:
+`✨ Я — Лиора, оракул любви. Помогаю разбираться в чувствах, притяжении и тонкостях диалога.
+Спроси о переписке, свидании, шансах на примирение, перспективах пары или о том, как встретить «своего» человека.
+Примеры: 
+• «Стоит ли писать первым/первой?» 
+• «Куда движутся наши отношения?» 
+• «Как мягко обсудить важное?» 💞`
+  },
+  wealth_oracle: {
+    name: 'Август',
+    title: 'оракул достатка',
+    hello:
+`✨ Я — Август, оракул достатка. Смотрю в траекторию денег, сделок и возможностей.
+Помогу про фокус недели, ближайший риск и точку роста дохода. 
+Примеры:
+• «Какой шаг быстрее всего увеличит доход?» 
+• «Как проходит сделка и где слабое место?» 
+• «На что держать фокус 7 дней?» 💰`
+  },
+  path_oracle: {
+    name: 'Аэон',
+    title: 'оракул предназначения',
+    hello:
+`✨ Я — Аэон, оракул предназначения. Подсвечу поворот на пути, урок и следующий шаг.
+Подходит для поиска себя, смены сферы, запуска проекта.
+Примеры:
+• «В каком направлении развиваться сейчас?» 
+• «Что завершить, чтобы перейти на новый этап?» 
+• «Какой один шаг даст ощутимый прогресс?» 🧭`
+  }
 };
 
 // ==== DATA: Zodiac (для гороскопа и «Таро знак») ====
@@ -84,7 +121,7 @@ const ZODIAC = [
 const labelToKey = {};
 ZODIAC.forEach(z => labelToKey[`${z.emoji} ${z.label}`] = z.key);
 
-// ==== TAROT (Major Arcana only, with core/vector/tip) ====
+// ==== TAROT (Major Arcana) ====
 const TAROT_MAJOR = [
   { key:'fool',name:'0 Шут',upright:'начало, спонтанность, доверие пути',reversed:'наивность, риск без плана',
     core:'старт нового цикла и смелость попробовать',vector:'идти, даже если нет полной карты местности',tip:'Оставь простор импровизации, но зафиксируй один маяк.'},
@@ -558,9 +595,8 @@ async function performTarotAnswer(ctx, kind, q, opts = {}) {
   }
 }
 
-// ==== Daily Tarot Narrative (новый «человечный» текст) ====
+// ==== Daily Tarot Narrative (человечный текст) ====
 async function tarotDailyNarrative(card) {
-  // Если нет LLM — даём мягкий оффлайн-текст ~2–3 предложения
   if (!client || !USE_LLM_TAROT) {
     const name = `${card.name}${card.isReversed ? ' (перевёрнутая)' : ''}`;
     return `${name} напоминает о простых шагах и внимательности к себе. Смотрите на события дня как на возможность потренировать осознанность и спокойный фокус. Одно небольшое действие по делу — лучше, чем десяток планов. ✨`;
@@ -568,9 +604,9 @@ async function tarotDailyNarrative(card) {
 
   const sys = `
 Ты таролог-рассказчик. Напиши связный текст 90–130 слов о значении карты дня.
-Не используй сухие ярлыки "Энергия/Вектор/Совет".
-Говори простым языком, будто совет другу: что несёт карта, чему учит, как это применить сегодня.
-Опирайся только на поля meaning/core/vector/tip, не придумывай новых трактовок.
+Не используй ярлыки "Энергия/Вектор/Совет".
+Говори просто, как другу: что несёт карта, чему учит, как применить сегодня.
+Опирайся на meaning/core/vector/tip, не придумывай новых трактовок.
 Добавь 1–2 уместных эмодзи.
 `.trim();
 
@@ -695,7 +731,7 @@ bot.hears(['⬅️ Назад к знакам'], async (ctx) => {
 
 // ===== TAROT =====
 
-// 🃏 Карта дня — из ГЛАВНОГО МЕНЮ, связный «человечный» текст
+// 🃏 Карта дня — «человечный» текст
 bot.hears(['🃏 Карта дня'], async (ctx) => {
   const chatId = getPeerId(ctx);
   const seed = (dailySeed(chatId) * 2654435761) >>> 0;
@@ -722,7 +758,7 @@ bot.hears(['🃏 Карта дня'], async (ctx) => {
   }
 });
 
-// === Новые расклады, требующие вопроса (без «Кельтского креста») ===
+// === Новые расклады, требующие вопроса ===
 function tarotAskPrompt(kind) {
   const lines = {
     money: `Привет, я ${TAROT_READER_NAME}, ваш личный таролог.\nКолода готова. Сформулируйте вопрос о деньгах/доходе/сделке — и я сделаю расклад.`,
@@ -785,7 +821,7 @@ bot.hears([
   // Если это не «Таро знак», отдаём управление гороскопу
   if (st.section !== 'horoscope') return typeof next === 'function' ? next() : undefined;
 
-  // ==== ГОРOСКОПЫ (оставлены) ====
+  // ==== ГОРOСКОПЫ ====
   if (st.sub === 'compat-wait-second') {
     const keyB = labelToKey[ctx.message.text];
     const keyA = st.tmp?.z1;
@@ -816,7 +852,7 @@ bot.hears([
   ]).resize());
 });
 
-// ===== Гороскопы (оставлены) =====
+// ===== Гороскопы =====
 const ZODIAC_PROMPTS = {
   general: `
 Ты — мистический астролог-повествователь. Пиши ёмко, без "воды".
@@ -992,6 +1028,24 @@ bot.hears(['🔗 Совместимость'], async (ctx) => {
 // ==== ВВОД ВОПРОСА ДЛЯ РАСКЛАДОВ ====
 bot.on('text', async (ctx, next) => {
   const st = getChatState(ctx);
+
+  // Ветка «Предсказание»: ожидание вопроса после выбора персонажа
+  if (st && st.section === 'predict' && st.sub === 'persona-wait-q') {
+    const q = (ctx.message.text || '').trim();
+    if (!q || q.startsWith('/')) return typeof next === 'function' ? next() : undefined;
+
+    await ctx.reply('Гадаю… ✨');
+    try {
+      const ans = await personaReply(st.tmp.persona, q, []);
+      await ctx.reply(ans || 'Ответ сейчас не сформировался. Попробуйте переформулировать вопрос.');
+    } catch (e) {
+      console.error(e);
+      await ctx.reply('Не удалось получить предсказание. Проверьте OPENAI_API_KEY.');
+    }
+    return;
+  }
+
+  // Ветка «Тарология»
   if (!st || st.section !== 'tarot') {
     return typeof next === 'function' ? next() : undefined;
   }
@@ -1037,11 +1091,22 @@ bot.on('text', async (ctx, next) => {
 bot.hears(['💘 Оракул любви','💰 Оракул достатка','🧭 Оракул предназначения'], async (ctx) => {
   const st = getChatState(ctx);
   if (st.section !== 'predict') return;
+
   const key = PREDICT_BUTTON_TO_PERSONA[ctx.message.text];
   if (!key) return;
-  st.sub = 'persona-picked';
+
+  const meta = PERSONA_META[key];
+  st.sub = 'persona-wait-q';
   st.tmp.persona = key;
-  await ctx.reply(`Выбрано: ${ctx.message.text}\nНапиши мне вопрос — и я сделаю предсказание.`);
+
+  // Приветствие выбранного предсказателя
+  const hello = meta
+    ? `Вы выбрали: ${ctx.message.text}\n\n${meta.hello}`
+    : `Предсказатель готов. Сформулируйте вопрос.`;
+
+  await ctx.reply(hello, Markup.keyboard([
+    ['⬅️ Назад в меню']
+  ]).resize());
 });
 
 async function personaReply(personaKey, userText, history = []) {
@@ -1063,24 +1128,6 @@ async function personaReply(personaKey, userText, history = []) {
   });
   return completion.choices?.[0]?.message?.content ?? '';
 }
-
-bot.on('text', async (ctx, next) => {
-  const st = getChatState(ctx);
-  if (!st || st.section !== 'predict' || st.sub !== 'persona-picked') {
-    return typeof next === 'function' ? next() : undefined;
-  }
-  const q = (ctx.message.text || '').trim();
-  if (!q || q.startsWith('/')) return typeof next === 'function' ? next() : undefined;
-
-  await ctx.reply('Гадаю… ✨');
-  try {
-    const ans = await personaReply(st.tmp.persona, q, []);
-    await ctx.reply(ans || 'Ответ сейчас не сформировался. Попробуйте переформулировать вопрос.');
-  } catch (e) {
-    console.error(e);
-    await ctx.reply('Не удалось получить предсказание. Проверьте OPENAI_API_KEY.');
-  }
-});
 
 // ==== INLINE-КНОПКИ: Followup и Пояснительная карта ====
 bot.action(new RegExp('^' + INLINE_FOLLOWUP_PREFIX), async (ctx) => {
